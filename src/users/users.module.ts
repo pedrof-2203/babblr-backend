@@ -4,9 +4,13 @@ import { UsersResolver } from './users.resolver';
 import { UsersRepository } from './users.repository';
 import { DatabaseModule } from '../common/database/database.module';
 import { User, UserSchema } from './entities/user.entity';
+import { PassportModule } from '@nestjs/passport';
 
 @Module({
   imports: [
+    PassportModule.register({
+      defaultStrategy: 'jwt',
+    }),
     DatabaseModule.forFeature([
       {
         name: User.name,
@@ -15,5 +19,6 @@ import { User, UserSchema } from './entities/user.entity';
     ]),
   ],
   providers: [UsersResolver, UsersService, UsersRepository],
+  exports: [UsersService],
 })
 export class UsersModule {}
