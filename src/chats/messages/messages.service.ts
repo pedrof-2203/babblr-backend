@@ -4,6 +4,7 @@ import { UpdateMessageInput } from './dto/update-message.input';
 import { ChatsRepository } from '../chats.repository';
 import { Message } from './entities/message.entity';
 import { Types } from 'mongoose';
+import { GetMessagesArgs } from './dto/get-messages.args';
 
 @Injectable()
 export class MessagesService {
@@ -23,14 +24,7 @@ export class MessagesService {
     await this.chatsRepository.findOneAndUpdate(
       {
         _id: chatId,
-        $or: [
-          { userId },
-          {
-            userIds: {
-              $in: [userId],
-            },
-          },
-        ],
+        ...this.filterChatsByUserId(userId),
       },
       {
         $push: {
@@ -42,8 +36,16 @@ export class MessagesService {
     return message;
   }
 
-  findAll() {
-    return `This action returns all messages`;
+  async findAll(
+    { chatId }: GetMessagesArgs,
+    userId: string,
+  ): Promise<Message[]> {
+    return (
+      await this.chatsRepository.findOne({
+        _id: chatId,
+        ...this.filterChatsByUserId(userId),
+      })
+    ).messages;
   }
 
   findOne(id: number) {
@@ -56,5 +58,18 @@ export class MessagesService {
 
   remove(id: number) {
     return `This action removes a #${id} message`;
+  }
+
+  private filterChatsByUserId(userId: string) {
+    return {
+      $or: [
+        { userId },
+        {
+          userIds: {
+            $in: [userId],
+          },
+        },
+      ],
+    };
   }
 }

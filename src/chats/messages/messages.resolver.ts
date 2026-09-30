@@ -7,6 +7,7 @@ import { UseGuards } from '@nestjs/common';
 import { GqlAuthGuard } from '../../auth/guards/gql-auth.guard';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import type { TokenPayload } from '../../auth/token-payload.interface';
+import { GetMessagesArgs } from './dto/get-messages.args';
 
 @Resolver(() => Message)
 export class MessagesResolver {
@@ -22,8 +23,12 @@ export class MessagesResolver {
   }
 
   @Query(() => [Message], { name: 'messages' })
-  findAll() {
-    return this.messagesService.findAll();
+  @UseGuards(GqlAuthGuard)
+  findAll(
+    @Args() getMessagesArgs: GetMessagesArgs,
+    @CurrentUser() user: TokenPayload,
+  ) {
+    return this.messagesService.findAll(getMessagesArgs, user._id);
   }
 
   @Query(() => Message, { name: 'message' })
