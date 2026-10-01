@@ -8,5 +8,7 @@ export class ChatsController {
 
   @Get('count')
   @UseGuards(JwtAuthGuard)
-  async countChats() {}
+  async countChats() {
+    return this.chatsService.countChats();
+  }
 }
