@@ -1,10 +1,11 @@
-import { ArgsType, Field } from "@nestjs/graphql";
-import { Prop } from "@nestjs/mongoose";
-import { IsNotEmpty } from "class-validator";
+import { ArgsType, Field } from '@nestjs/graphql';
+import { Prop } from '@nestjs/mongoose';
+import { IsArray, IsNotEmpty } from 'class-validator';
 
 @ArgsType()
 export class MessageCreatedArgs {
-  @Field()
-  @IsNotEmpty()
-  chatId: string;
+  @Field(() => [String])
+  @IsArray()
+  @IsNotEmpty({ each: true })
+  chatIds: string[];
 }
