@@ -8,7 +8,6 @@ import { PUB_SUB } from '../../common/constants/injection-tokens';
 import { PubSub } from 'graphql-subscriptions';
 import { MESSAGE_CREATED } from './constants/triggers';
 import { MessageCreatedArgs } from './dto/message-created.args';
-import { ChatsService } from '../chats.service';
 import { MessageDocument } from './entities/message.document';
 import { UsersService } from '../../users/users.service';
 
@@ -19,6 +18,25 @@ export class MessagesService {
     private readonly usersService: UsersService,
     @Inject(PUB_SUB) private readonly pubSub: PubSub,
   ) {}
+
+  async findAll({ chatId }: GetMessagesArgs) {
+    return this.chatsRepository.model.aggregate([
+      { $match: { _id: new Types.ObjectId(chatId) } },
+      { $unwind: '$messages' },
+      { $replaceRoot: { newRoot: '$messages' } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      { $unset: 'userId' },
+      { $set: { chatId } },
+    ]);
+  }
 
   async create({ chatId, content }: CreateMessageInput, userId: string) {
     const messageDocument: MessageDocument = {
@@ -50,14 +68,6 @@ export class MessagesService {
     });
 
     return message;
-  }
-
-  async findAll({ chatId }: GetMessagesArgs): Promise<Message[]> {
-    return (
-      await this.chatsRepository.findOne({
-        _id: chatId,
-      })
-    ).messages;
   }
 
   async messageCreated({ chatId }: MessageCreatedArgs) {

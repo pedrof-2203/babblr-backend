@@ -37,19 +37,17 @@ export class MessagesResolver {
 
   @Query(() => [Message], { name: 'messages' })
   @UseGuards(GqlAuthGuard)
-  async findAll(
-    @Args() getMessagesArgs: GetMessagesArgs,
-    @CurrentUser() user: TokenPayload,
-  ): Promise<Message[]> {
+  async findAll(@Args() getMessagesArgs: GetMessagesArgs): Promise<Message[]> {
     return await this.messagesService.findAll(getMessagesArgs);
   }
 
   @Subscription(() => Message, {
     filter: (payload, variables, context) => {
       const userId = context.req.user._id;
+      const message: Message = payload.messageCreated;
       return (
-        payload.messageCreated.chatId === variables.chatId &&
-        userId !== payload.messageCreated.userId
+        message.chatId === variables.chatId &&
+        userId !== message.user._id.toHexString()
       );
     },
   })

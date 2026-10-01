@@ -11,6 +11,12 @@ import type { TokenPayload } from '../auth/token-payload.interface';
 export class ChatsResolver {
   constructor(private readonly chatsService: ChatsService) {}
 
+  @Query(() => [Chat], { name: 'chats' })
+  @UseGuards(GqlAuthGuard)
+  async findAll(): Promise<Chat[]> {
+    return await this.chatsService.findMany();
+  }
+
   @Mutation(() => Chat)
   @UseGuards(GqlAuthGuard)
   async createChat(
@@ -20,13 +26,9 @@ export class ChatsResolver {
     return await this.chatsService.create(createChatInput, user._id);
   }
 
-  // @Query(() => [Chat], { name: 'chats' })
-  // @UseGuards(GqlAuthGuard)
-  // async findAll(@CurrentUser() user: TokenPayload): Promise<Chat[]> {
-  //   return await this.chatsService.findAll(user._id);
-  // }
 
   @Query(() => Chat, { name: 'chat' })
+  @UseGuards(GqlAuthGuard)
   async findOne(@Args('_id') _id: string): Promise<Chat> {
     return await this.chatsService.findOneById(_id);
   }

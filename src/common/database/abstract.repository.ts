@@ -5,7 +5,7 @@ import { AbstractEntity } from './abstract.entity';
 export abstract class AbstractRepository<T extends AbstractEntity> {
   protected abstract readonly logger: Logger;
 
-  constructor(protected readonly model: Model<T>) {}
+  constructor(public readonly model: Model<T>) {}
 
   async findMany(queryFilter: QueryFilter<T>): Promise<T[]> {
     return this.model.find(queryFilter).lean<T[]>();
