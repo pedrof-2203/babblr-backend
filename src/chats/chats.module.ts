@@ -6,6 +6,7 @@ import { DatabaseModule } from '../common/database/database.module';
 import { PassportModule } from '@nestjs/passport';
 import { MessagesModule } from './messages/messages.module';
 import { ChatDocument, ChatSchema } from './entities/chat.document';
+import { ChatsController } from './chats.controller';
 
 @Module({
   imports: [
@@ -22,5 +23,6 @@ import { ChatDocument, ChatSchema } from './entities/chat.document';
   ],
   providers: [ChatsResolver, ChatsService, ChatsRepository],
   exports: [ChatsRepository],
+  controllers: [ChatsController],
 })
 export class ChatsModule {}

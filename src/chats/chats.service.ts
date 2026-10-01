@@ -2,16 +2,35 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PipelineStage, Types } from 'mongoose';
 import { ChatsRepository } from './chats.repository';
 import { CreateChatInput } from './dto/create-chat.input';
+import { PaginationArgs } from '../common/dto/pagination-args.dto';
 
 @Injectable()
 export class ChatsService {
   constructor(private readonly chatsRepository: ChatsRepository) {}
 
-  async findMany(prePipelineStages: PipelineStage[] = []) {
+  async findMany(
+    prePipelineStages: PipelineStage[] = [],
+    paginationArgs?: PaginationArgs,
+  ) {
     const chats = await this.chatsRepository.model.aggregate([
       ...prePipelineStages,
-      { $set: { latestMessage: { $arrayElemAt: ['$messages', -1] } } },
+      {
+        $set: {
+          latestMessage: {
+            $cond: [
+              '$messages',
+              { $arrayElemAt: ['$messages', -1] },
+              { createdAt: new Date() },
+            ],
+          },
+        },
+      },
+      { $sort: { 'latestMessage.createdAt': -1 } },
       { $unset: 'messages' },
+
+      { $skip: paginationArgs?.skip ?? 0 },
+      { $limit: paginationArgs?.limit ?? 25 },
+
       {
         $lookup: {
           from: 'users',
@@ -49,5 +68,9 @@ export class ChatsService {
       throw new NotFoundException(`Not chat found by id ${_id}`);
     }
     return chats[0];
+  }
+
+  async countChats() {
+    return this.chatsRepository.model.countDocuments({});
   }
 }
