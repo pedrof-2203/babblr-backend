@@ -33,5 +33,6 @@ import { GqlAuthGuard } from './guards/gql-auth.guard';
     JwtStrategy,
   ],
   controllers: [AuthController],
+  exports: [AuthService]
 })
 export class AuthModule {}

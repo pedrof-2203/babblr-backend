@@ -16,19 +16,29 @@ export class ChatsService {
     });
   }
 
-  async findAll() {
-    return this.chatsRepository.findMany({});
+  async findAll(userId: string) {
+    return this.chatsRepository.findMany({
+      ...this.filterChatsByUserId(userId),
+    });
   }
 
   async findOne(_id: string) {
     return this.chatsRepository.findOne({ _id });
   }
 
-  update(id: number, updateChatInput: UpdateChatInput) {
-    return `This action updates a #${id} chat`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} chat`;
+  filterChatsByUserId(userId: string) {
+    return {
+      $or: [
+        { userId },
+        {
+          userIds: {
+            $in: [userId],
+          },
+        },
+        {
+          isPrivate: false,
+        },
+      ],
+    };
   }
 }

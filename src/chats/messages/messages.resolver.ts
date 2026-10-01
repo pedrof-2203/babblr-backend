@@ -1,17 +1,32 @@
-import { Resolver, Query, Mutation, Args, Int } from '@nestjs/graphql';
+import {
+  Resolver,
+  Query,
+  Mutation,
+  Args,
+  Int,
+  Subscription,
+} from '@nestjs/graphql';
 import { MessagesService } from './messages.service';
 import { Message } from './entities/message.entity';
 import { CreateMessageInput } from './dto/create-message.input';
 import { UpdateMessageInput } from './dto/update-message.input';
-import { UseGuards } from '@nestjs/common';
+import { Inject, UseGuards } from '@nestjs/common';
 import { GqlAuthGuard } from '../../auth/guards/gql-auth.guard';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import type { TokenPayload } from '../../auth/token-payload.interface';
 import { GetMessagesArgs } from './dto/get-messages.args';
+import { PUB_SUB } from '../../common/constants/injection-tokens';
+import { PubSub } from 'graphql-subscriptions';
+import { MESSAGE_CREATED } from './constants/triggers';
+import { MessageCreatedArgs } from './dto/message-created.args';
 
 @Resolver(() => Message)
 export class MessagesResolver {
-  constructor(private readonly messagesService: MessagesService) {}
+  constructor(
+    private readonly messagesService: MessagesService,
+    @Inject(PUB_SUB)
+    private readonly pubSub: PubSub,
+  ) {}
 
   @Mutation(() => Message)
   @UseGuards(GqlAuthGuard)
@@ -24,30 +39,26 @@ export class MessagesResolver {
 
   @Query(() => [Message], { name: 'messages' })
   @UseGuards(GqlAuthGuard)
-  findAll(
+  async findAll(
     @Args() getMessagesArgs: GetMessagesArgs,
     @CurrentUser() user: TokenPayload,
   ) {
     return this.messagesService.findAll(getMessagesArgs, user._id);
   }
 
-  @Query(() => Message, { name: 'message' })
-  findOne(@Args('id', { type: () => Int }) id: number) {
-    return this.messagesService.findOne(id);
-  }
-
-  @Mutation(() => Message)
-  updateMessage(
-    @Args('updateMessageInput') updateMessageInput: UpdateMessageInput,
+  @Subscription(() => Message, {
+    filter: (payload, variables, context) => {
+      const userId = context.req.user._id;
+      return (
+        payload.messageCreated.chatId === variables.chatId &&
+        userId !== payload.messageCreated.userId
+      );
+    },
+  })
+  messageCreated(
+    @Args() messageCreatedArgs: MessageCreatedArgs,
+    @CurrentUser() user: TokenPayload,
   ) {
-    return this.messagesService.update(
-      updateMessageInput.id,
-      updateMessageInput,
-    );
-  }
-
-  @Mutation(() => Message)
-  removeMessage(@Args('id', { type: () => Int }) id: number) {
-    return this.messagesService.remove(id);
+    return this.messagesService.messageCreated(messageCreatedArgs, user._id);
   }
 }

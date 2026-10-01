@@ -1,14 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CreateMessageInput } from './dto/create-message.input';
 import { UpdateMessageInput } from './dto/update-message.input';
 import { ChatsRepository } from '../chats.repository';
 import { Message } from './entities/message.entity';
 import { Types } from 'mongoose';
 import { GetMessagesArgs } from './dto/get-messages.args';
+import { PUB_SUB } from '../../common/constants/injection-tokens';
+import { PubSub } from 'graphql-subscriptions';
+import { MESSAGE_CREATED } from './constants/triggers';
+import { MessageCreatedArgs } from './dto/message-created.args';
+import { ChatsService } from '../chats.service';
 
 @Injectable()
 export class MessagesService {
-  constructor(private readonly chatsRepository: ChatsRepository) {}
+  constructor(
+    private readonly chatsRepository: ChatsRepository,
+    private readonly chatsService: ChatsService,
+    @Inject(PUB_SUB) private readonly pubSub: PubSub,
+  ) {}
 
   async create(
     { chatId, content }: CreateMessageInput,
@@ -16,6 +25,7 @@ export class MessagesService {
   ): Promise<Message> {
     const message: Message = {
       _id: new Types.ObjectId(),
+      chatId,
       userId,
       content,
       createdAt: new Date(),
@@ -24,7 +34,7 @@ export class MessagesService {
     await this.chatsRepository.findOneAndUpdate(
       {
         _id: chatId,
-        ...this.filterChatsByUserId(userId),
+        ...this.chatsService.filterChatsByUserId(userId),
       },
       {
         $push: {
@@ -32,6 +42,10 @@ export class MessagesService {
         },
       },
     );
+
+    await this.pubSub.publish(MESSAGE_CREATED, {
+      messageCreated: message,
+    });
 
     return message;
   }
@@ -43,33 +57,16 @@ export class MessagesService {
     return (
       await this.chatsRepository.findOne({
         _id: chatId,
-        ...this.filterChatsByUserId(userId),
+        ...this.chatsService.filterChatsByUserId(userId),
       })
     ).messages;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} message`;
-  }
-
-  update(id: number, updateMessageInput: UpdateMessageInput) {
-    return `This action updates a #${id} message`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} message`;
-  }
-
-  private filterChatsByUserId(userId: string) {
-    return {
-      $or: [
-        { userId },
-        {
-          userIds: {
-            $in: [userId],
-          },
-        },
-      ],
-    };
+  async messageCreated({ chatId }: MessageCreatedArgs, userId: string) {
+    await this.chatsRepository.findOne({
+      _id: chatId,
+      ...this.chatsService.filterChatsByUserId(userId),
+    });
+    return this.pubSub.asyncIterableIterator(MESSAGE_CREATED);
   }
 }

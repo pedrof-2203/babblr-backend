@@ -22,22 +22,13 @@ export class ChatsResolver {
   }
 
   @Query(() => [Chat], { name: 'chats' })
-  findAll() {
-    return this.chatsService.findAll();
+  @UseGuards(GqlAuthGuard)
+  findAll(@CurrentUser() user: TokenPayload) {
+    return this.chatsService.findAll(user._id);
   }
 
   @Query(() => Chat, { name: 'chat' })
   findOne(@Args('_id') _id: string) {
     return this.chatsService.findOne(_id);
-  }
-
-  @Mutation(() => Chat)
-  updateChat(@Args('updateChatInput') updateChatInput: UpdateChatInput) {
-    return this.chatsService.update(updateChatInput.id, updateChatInput);
-  }
-
-  @Mutation(() => Chat)
-  removeChat(@Args('id', { type: () => Int }) id: number) {
-    return this.chatsService.remove(id);
   }
 }

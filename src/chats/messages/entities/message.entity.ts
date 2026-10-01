@@ -7,6 +7,10 @@ import { AbstractEntity } from '../../../common/database/abstract.entity';
 export class Message extends AbstractEntity {
   @Field()
   @Prop()
+  chatId: string;
+
+  @Field()
+  @Prop()
   userId: string;
 
   @Field()
