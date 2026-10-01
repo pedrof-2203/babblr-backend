@@ -3,6 +3,7 @@ import { MessagesService } from './messages.service';
 import { MessagesResolver } from './messages.resolver';
 import { ChatsModule } from '../chats.module';
 import { PassportModule } from '@nestjs/passport';
+import { UsersModule } from '../../users/users.module';
 
 @Module({
   imports: [
@@ -10,6 +11,7 @@ import { PassportModule } from '@nestjs/passport';
       defaultStrategy: 'jwt',
     }),
     forwardRef(() => ChatsModule),
+    UsersModule,
   ],
   providers: [MessagesResolver, MessagesService],
 })

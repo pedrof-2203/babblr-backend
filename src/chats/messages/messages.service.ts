@@ -1,6 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CreateMessageInput } from './dto/create-message.input';
-import { UpdateMessageInput } from './dto/update-message.input';
 import { ChatsRepository } from '../chats.repository';
 import { Message } from './entities/message.entity';
 import { Types } from 'mongoose';
@@ -10,23 +9,21 @@ import { PubSub } from 'graphql-subscriptions';
 import { MESSAGE_CREATED } from './constants/triggers';
 import { MessageCreatedArgs } from './dto/message-created.args';
 import { ChatsService } from '../chats.service';
+import { MessageDocument } from './entities/message.document';
+import { UsersService } from '../../users/users.service';
 
 @Injectable()
 export class MessagesService {
   constructor(
     private readonly chatsRepository: ChatsRepository,
-    private readonly chatsService: ChatsService,
+    private readonly usersService: UsersService,
     @Inject(PUB_SUB) private readonly pubSub: PubSub,
   ) {}
 
-  async create(
-    { chatId, content }: CreateMessageInput,
-    userId: string,
-  ): Promise<Message> {
-    const message: Message = {
+  async create({ chatId, content }: CreateMessageInput, userId: string) {
+    const messageDocument: MessageDocument = {
       _id: new Types.ObjectId(),
-      chatId,
-      userId,
+      userId: new Types.ObjectId(userId),
       content,
       createdAt: new Date(),
     };
@@ -34,14 +31,19 @@ export class MessagesService {
     await this.chatsRepository.findOneAndUpdate(
       {
         _id: chatId,
-        ...this.chatsService.filterChatsByUserId(userId),
       },
       {
         $push: {
-          messages: message,
+          messages: messageDocument,
         },
       },
     );
+
+    const message: Message = {
+      ...messageDocument,
+      chatId,
+      user: await this.usersService.findOne(userId),
+    };
 
     await this.pubSub.publish(MESSAGE_CREATED, {
       messageCreated: message,
@@ -50,22 +52,17 @@ export class MessagesService {
     return message;
   }
 
-  async findAll(
-    { chatId }: GetMessagesArgs,
-    userId: string,
-  ): Promise<Message[]> {
+  async findAll({ chatId }: GetMessagesArgs): Promise<Message[]> {
     return (
       await this.chatsRepository.findOne({
         _id: chatId,
-        ...this.chatsService.filterChatsByUserId(userId),
       })
     ).messages;
   }
 
-  async messageCreated({ chatId }: MessageCreatedArgs, userId: string) {
+  async messageCreated({ chatId }: MessageCreatedArgs) {
     await this.chatsRepository.findOne({
       _id: chatId,
-      ...this.chatsService.filterChatsByUserId(userId),
     });
     return this.pubSub.asyncIterableIterator(MESSAGE_CREATED);
   }

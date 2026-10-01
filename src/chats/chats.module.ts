@@ -3,9 +3,9 @@ import { ChatsService } from './chats.service';
 import { ChatsResolver } from './chats.resolver';
 import { ChatsRepository } from './chats.repository';
 import { DatabaseModule } from '../common/database/database.module';
-import { Chat, ChatSchema } from './entities/chat.entity';
 import { PassportModule } from '@nestjs/passport';
 import { MessagesModule } from './messages/messages.module';
+import { ChatDocument, ChatSchema } from './entities/chat.document';
 
 @Module({
   imports: [
@@ -14,13 +14,13 @@ import { MessagesModule } from './messages/messages.module';
     }),
     DatabaseModule.forFeature([
       {
-        name: Chat.name,
+        name: ChatDocument.name,
         schema: ChatSchema,
       },
     ]),
     forwardRef(() => MessagesModule),
   ],
   providers: [ChatsResolver, ChatsService, ChatsRepository],
-  exports: [ChatsRepository, ChatsService],
+  exports: [ChatsRepository],
 })
 export class ChatsModule {}

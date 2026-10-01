@@ -1,13 +1,17 @@
-import { ObjectType, Field } from '@nestjs/graphql';
 import { AbstractEntity } from '../../common/database/abstract.entity';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Message } from '../messages/entities/message.entity';
 
-@ObjectType()
-export class Chat extends AbstractEntity {
-  @Field()
+@Schema()
+export class ChatDocument extends AbstractEntity {
+  @Prop()
+  userId: string;
+
+  @Prop()
   name: string;
 
-  @Field(() => Message, { nullable: true })
-  latestMessage?: Message;
+  @Prop([Message])
+  messages: Message[];
 }
+
+export const ChatSchema = SchemaFactory.createForClass(ChatDocument);
