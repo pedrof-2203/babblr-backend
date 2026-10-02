@@ -337,21 +337,6 @@ subscription {
 
 The subscription filter excludes the sender's own messages. Use the `createMessage` mutation response to display a message immediately for its sender.
 
-## Testing
-
-```bash
-pnpm run test --runInBand
-pnpm run test:watch
-pnpm run test:cov
-pnpm run test:e2e
-```
-
-Unit tests live beside source files and use Jest with ts-jest. They include a root-controller assertion, password-hashing checks, and module-construction tests. Coverage output is written to `coverage/`.
-
-The test suite is currently incomplete: several controller, resolver, and service tests do not provide their required dependencies or guard configuration and fail during module construction. The user-service test inputs also lag behind the current DTO definitions.
-
-The E2E suite contains one Supertest smoke test for `GET /`. It attempts to replace database access, but only mocks the user model, leaving chat-model dependencies unresolved. Its setup supplies test database settings but does not supply `JWT_SECRET` or `JWT_EXPIRATION`; those still require test configuration. It is not a complete authentication, chat, or subscription integration suite.
-
 ## Useful scripts
 
 | Command                | Purpose                                                                                 |
