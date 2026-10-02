@@ -119,6 +119,124 @@ pnpm run start:prod
 
 Set `NODE_ENV=production` in the runtime environment when using production logging. `start:prod` runs the existing `dist/main` build; it does not build the application or set `NODE_ENV` itself. Keep the compiled migrations available and provide all required environment variables.
 
+## Running with Docker
+
+### Prerequisites and configuration
+
+Install Docker Engine with the Compose plugin, or Docker Desktop running Linux
+containers. Start the Docker engine before running the commands below. No local
+Node.js, pnpm, or MongoDB installation is required for Compose.
+
+Create your local configuration (keep an existing `.env` if you already have one):
+
+```bash
+cp .env.example .env
+```
+
+In PowerShell, use `Copy-Item .env.example .env`. Generate a JWT secret with:
+
+```bash
+docker run --rm node:24.16.0-bookworm-slim node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+Paste the output after `JWT_SECRET=` in `.env`. This is the only required value
+you must supply for Compose; it rejects an unset or empty secret. Do not commit
+`.env`. Environment files and credentials are excluded from the image.
+
+Compose defaults `DB_NAME` to `babblr`, `JWT_EXPIRATION` to `3600` seconds, and
+the host `PORT` to `3000`. It sets `NODE_ENV=production` and the container port
+to `3000`, and constructs `MONGODB_URI` using the `mongo` service and `DB_NAME`
+so the application and migrations use the same database. Compose deliberately
+overrides `.env` values for `MONGODB_URI` and `NODE_ENV`; the URI in the example
+is for running Node.js locally or configuring a standalone container.
+
+### Start and stop the complete environment
+
+From the repository root:
+
+```bash
+docker compose up --build
+```
+
+For background operation, use `docker compose up --build -d`. The API is at
+`http://localhost:3000`, GraphQL and WebSocket subscriptions at `/graphql`.
+Change `PORT` in `.env` if the host port is occupied; the container still listens
+on `3000`. The API is published only on the local machine's loopback interface.
+
+MongoDB is the only external service. Compose provides MongoDB 8.0, waits for
+its ping health check, and then starts the app. Compiled migrations in
+`dist/migrations` run automatically before the app starts listening, including
+the unique email index. No separate migration or seed command is needed; create
+the first user with the registration mutation documented below.
+
+```bash
+docker compose ps
+docker compose logs -f app
+curl http://localhost:3000/
+```
+
+The last command returns `Hello World!`. The image health check probes this
+endpoint; it checks HTTP responsiveness, not ongoing database connectivity.
+
+```bash
+docker compose down
+```
+
+MongoDB data persists in the named `mongo-data` volume across container rebuilds
+and `down`/`up`. To intentionally delete **all development database data**:
+
+```bash
+docker compose down --volumes
+```
+
+Compose's MongoDB has no authentication and no published host port. This setup
+is for local development. Production deployments should supply an authenticated
+MongoDB connection and appropriate network access controls.
+
+### Image architecture and standalone use
+
+The multi-stage Dockerfile uses the official Node.js 24.16.0 Debian slim image
+and pnpm 12.6.0 (matching the tools used to validate this repository). Node 24
+satisfies the locked dependencies' engine requirements. There is one application,
+not a monorepo; `pnpm-workspace.yaml` supplies dependency build permissions.
+Dependency layers use the frozen lockfile and a BuildKit pnpm cache. Native
+build tools for bcrypt are confined to build stages. The final image contains
+production dependencies and compiled application/migrations, runs as the `node`
+user, and starts `node dist/main.js`, equivalent to `pnpm run start:prod`.
+
+Build the image independently:
+
+```bash
+docker build -t babblr-backend .
+```
+
+For standalone use, provision MongoDB first and set `.env`'s `MONGODB_URI` to an
+address reachable **from the container**. `127.0.0.1` inside a container refers
+to that container, not the host. For a host database on Docker Desktop, use
+`mongodb://host.docker.internal:27017/babblr`; on Linux Engine also pass
+`--add-host=host.docker.internal:host-gateway` and ensure MongoDB accepts connections
+from the Docker network. An external authenticated MongoDB URI also works.
+Set `DB_NAME` to the database in the URI, supply `JWT_SECRET` and
+`JWT_EXPIRATION`, and use `PORT=3000` for the command below:
+
+```bash
+docker run --detach --init --name babblr-backend --env-file .env -e NODE_ENV=production -p 127.0.0.1:3000:3000 babblr-backend
+docker logs -f babblr-backend
+docker stop babblr-backend
+docker rm babblr-backend
+```
+
+### Rebuilds and configuration changes
+
+After source, dependency, or build configuration changes, run
+`docker compose up --build -d`. Update and commit `pnpm-lock.yaml` whenever
+dependencies change; frozen installs reject an inconsistent lockfile. After
+editing `.env`, run `docker compose up -d --force-recreate app` to apply the new
+environment. A plain restart does not reload container environment variables.
+There are no source bind mounts or file watchers in this production image.
+For a fresh base image, run `docker compose build --pull` followed by
+`docker compose up -d`.
+
 ## API
 
 ### Authentication
