@@ -4,6 +4,7 @@ import { MessagesResolver } from './messages.resolver';
 import { ChatsModule } from '../chats.module';
 import { PassportModule } from '@nestjs/passport';
 import { UsersModule } from '../../users/users.module';
+import { MessagesController } from './messages.controller';
 
 @Module({
   imports: [
@@ -14,5 +15,6 @@ import { UsersModule } from '../../users/users.module';
     UsersModule,
   ],
   providers: [MessagesResolver, MessagesService],
+  controllers: [MessagesController],
 })
 export class MessagesModule {}
